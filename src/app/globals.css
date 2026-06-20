@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 26, 26, 26;
+  --background-rgb: 252, 249, 242; /* warm cream */
+  --ink-border: #1a1a1a;
+  --ink-accent: #7f1d1d;
+  
+  --font-inter: 'Inter', sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
+  --font-cinzel: 'Cinzel', Times, serif;
+  --font-share-mono: 'Share Tech Mono', monospace;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: var(--font-inter);
+}
+
+/* Custom premium newspaper components */
+.newspaper-double-border {
+  border-top: 4px double var(--ink-border);
+  border-bottom: 4px double var(--ink-border);
+}
+
+.newspaper-thin-border-bottom {
+  border-bottom: 1px solid var(--ink-border);
+}
+
+.newspaper-thick-border-top {
+  border-top: 4px solid var(--ink-border);
+}
+
+.newspaper-divider {
+  border-right: 1px solid var(--ink-border);
+}
+
+/* Editorial Drop Cap */
+.newspaper-drop-cap::first-letter {
+  float: left;
+  font-size: 3.5rem;
+  line-height: 2.8rem;
+  padding-right: 6px;
+  padding-top: 4px;
+  font-family: var(--font-playfair);
+  font-weight: 900;
+  color: var(--ink-accent);
+}
+
+/* Print Overrides */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}

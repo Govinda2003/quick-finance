@@ -12,6 +12,7 @@ export default function NewspaperPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
 
   React.useEffect(() => {
     document.title = "Quick Finance";
@@ -40,11 +41,12 @@ export default function NewspaperPage() {
     }
 
     try {
-      const response = await fetch("/api/refresh-news", {
+      const response = await fetch(`/api/refresh-news?t=${Date.now()}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        cache: "no-store",
         body: JSON.stringify({
           email: recipientEmail,
         }),
@@ -52,14 +54,29 @@ export default function NewspaperPage() {
 
       const data = await response.json();
 
-      if (data.edition) {
-        setCurrentEdition(data.edition);
-      }
-
       if (response.ok && data.success) {
-        setMessage("Latest Quick Finance edition generated and emailed successfully.");
+        if (
+          currentEdition &&
+          data.edition?.featuredStory &&
+          currentEdition.featuredStory &&
+          data.edition.featuredStory.headline === currentEdition.featuredStory.headline
+        ) {
+          setMessage("No newer articles found. Showing latest available edition.");
+        } else {
+          setMessage("Latest Quick Finance edition generated and emailed successfully.");
+        }
+
+        if (data.edition) {
+          setCurrentEdition(data.edition);
+        }
+
+        setLastRefreshedAt(new Date().toLocaleTimeString());
       } else {
         setMessage(`Error: ${data.error || "Live news API not configured yet. Showing demo edition."}`);
+        if (data.edition) {
+          setCurrentEdition(data.edition);
+          setLastRefreshedAt(new Date().toLocaleTimeString());
+        }
       }
     } catch (error: any) {
       console.error(error);
@@ -353,49 +370,56 @@ export default function NewspaperPage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button
-              onClick={handleGenerateEdition}
-              disabled={isGenerating}
-              className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50 text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none flex items-center justify-center gap-1.5"
-            >
-              {isGenerating ? (
-                <>
-                  <svg className="animate-spin h-3.5 w-3.5 text-slate-300" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Fetching latest signal...</span>
-                </>
-              ) : (
-                <span>🔄 Refresh Latest News</span>
-              )}
-            </button>
+          <div className="flex flex-col items-center sm:items-end gap-1.5 w-full sm:w-auto">
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={handleGenerateEdition}
+                disabled={isGenerating}
+                className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50 text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none flex items-center justify-center gap-1.5"
+              >
+                {isGenerating ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-slate-300" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Fetching latest signal...</span>
+                  </>
+                ) : (
+                  <span>🔄 Refresh Latest News</span>
+                )}
+              </button>
 
-            <button
-              onClick={handleSendEmail}
-              disabled={isSendingEmail}
-              className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50 text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none flex items-center justify-center gap-1.5"
-            >
-              {isSendingEmail ? (
-                <>
-                  <svg className="animate-spin h-3.5 w-3.5 text-slate-300" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <span>✉️ Send Test Email</span>
-              )}
-            </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={isSendingEmail}
+                className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50 text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none flex items-center justify-center gap-1.5"
+              >
+                {isSendingEmail ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-slate-300" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <span>✉️ Send Test Email</span>
+                )}
+              </button>
 
-            <button
-              onClick={handlePrint}
-              className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none"
-            >
-              📄 Export PDF
-            </button>
+              <button
+                onClick={handlePrint}
+                className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded transition-all focus:outline-none"
+              >
+                📄 Export PDF
+              </button>
+            </div>
+            {lastRefreshedAt && (
+              <div id="last-refreshed-time" className="text-[10px] text-slate-400 font-semibold text-center sm:text-right w-full pr-1">
+                Last refreshed at: {lastRefreshedAt}
+              </div>
+            )}
           </div>
 
         </div>

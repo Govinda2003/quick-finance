@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { MOCK_EDITIONS, NewspaperEdition, Article, SmartRead } from "../../../data/mockData";
+import { MOCK_EDITIONS, NewspaperEdition, Article, SmartRead, WatchItem } from "../../../data/mockData";
 import { buildEmailHtml } from "../../../utils/emailTemplate";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +98,9 @@ function parseRss(xmlText: string, defaultSourceName: string): Array<{ title: st
         else if (host.includes("bain")) source = "Bain Insights";
         else if (host.includes("bcg")) source = "BCG Insights";
         else if (host.includes("hbr.org")) source = "Harvard Business Review";
+        else if (host.includes("bloomberg.com")) source = "Bloomberg";
+        else if (host.includes("wsj.com")) source = "Wall Street Journal";
+        else if (host.includes("ft.com")) source = "Financial Times";
       } catch (e) {}
     }
     
@@ -432,20 +435,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Fetch and Parse 10 RSS Feeds
+    // 2. Fetch and Parse 13 RSS Feeds
     const rawArticles: Array<{ title: string; link: string; description: string; pubDate: string; source: string }> = [];
 
+    const ts = Date.now();
     const feeds = [
-      { name: "Reuters Business", url: "https://news.google.com/rss/search?q=site:reuters.com/business+OR+site:reuters.com/markets&hl=en-US&gl=US&ceid=US:en" },
-      { name: "The Economic Times", url: "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms" },
-      { name: "Moneycontrol", url: "https://www.moneycontrol.com/rss/latestnews.xml" },
-      { name: "LiveMint", url: "https://www.livemint.com/rss/markets" },
-      { name: "CNBC Business", url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147" },
-      { name: "TechCrunch AI", url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
-      { name: "McKinsey Insights", url: "https://news.google.com/rss/search?q=site:mckinsey.com/featured-insights+OR+site:mckinsey.com/capabilities&hl=en-US&gl=US&ceid=US:en" },
-      { name: "Bain Insights", url: "https://news.google.com/rss/search?q=site:bain.com/insights&hl=en-US&gl=US&ceid=US:en" },
-      { name: "BCG Insights", url: "https://news.google.com/rss/search?q=site:bcg.com/featured-insights&hl=en-US&gl=US&ceid=US:en" },
-      { name: "Harvard Business Review", url: "https://news.google.com/rss/search?q=site:hbr.org&hl=en-US&gl=US&ceid=US:en" }
+      { name: "Reuters Business", url: `https://news.google.com/rss/search?q=site:reuters.com/business+OR+site:reuters.com/markets&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "The Economic Times", url: `https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms?t=${ts}` },
+      { name: "Moneycontrol", url: `https://www.moneycontrol.com/rss/latestnews.xml?t=${ts}` },
+      { name: "LiveMint", url: `https://www.livemint.com/rss/markets?t=${ts}` },
+      { name: "CNBC Business", url: `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147&t=${ts}` },
+      { name: "TechCrunch AI", url: `https://techcrunch.com/category/artificial-intelligence/feed/?t=${ts}` },
+      { name: "McKinsey Insights", url: `https://news.google.com/rss/search?q=site:mckinsey.com/featured-insights+OR+site:mckinsey.com/capabilities&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "Bain Insights", url: `https://news.google.com/rss/search?q=site:bain.com/insights&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "BCG Insights", url: `https://news.google.com/rss/search?q=site:bcg.com/featured-insights&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "Harvard Business Review", url: `https://news.google.com/rss/search?q=site:hbr.org&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "Bloomberg", url: `https://news.google.com/rss/search?q=site:bloomberg.com&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "Wall Street Journal", url: `https://news.google.com/rss/search?q=site:wsj.com&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
+      { name: "Financial Times", url: `https://news.google.com/rss/search?q=site:ft.com&hl=en-US&gl=US&ceid=US:en&t=${ts}` }
     ];
 
     // Fetch from all RSS feeds concurrently with timeout protection
@@ -534,6 +541,7 @@ export async function POST(request: Request) {
         sourceLower.includes("reuters") ||
         sourceLower.includes("bloomberg") ||
         sourceLower.includes("financial times") ||
+        sourceLower.includes("wall street journal") ||
         sourceLower.includes("mckinsey") ||
         sourceLower.includes("bcg") ||
         sourceLower.includes("bain") ||
@@ -568,7 +576,7 @@ export async function POST(request: Request) {
     const sorted = scoredArticles.map((s) => s.art);
 
     // Fall back to dynamic demo edition if not enough articles were aggregated
-    if (sorted.length < 5) {
+    if (sorted.length < 12) {
       console.warn(`Only found ${sorted.length} RSS articles. Falling back to demo edition.`);
       const demoEdition: NewspaperEdition = {
         ...baseEdition,
@@ -597,7 +605,7 @@ export async function POST(request: Request) {
         html: emailHtml,
       });
 
-      return NextResponse.json(
+      const res = NextResponse.json(
         {
           success: false,
           error: "Failed to aggregate live RSS feeds. Showing demo edition.",
@@ -605,11 +613,18 @@ export async function POST(request: Request) {
         },
         { status: 200 }
       );
+      res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.headers.set("Pragma", "no-cache");
+      res.headers.set("Expires", "0");
+      return res;
     }
 
     // 4. Generate Structured Newspaper Edition
+    const usedUrls = new Set<string>();
+
     // Featured Story (top article)
     const topStory = sorted[0];
+    usedUrls.add(topStory.link);
     const featFields = generateArticleFields(topStory.title, topStory.description, "watchlist");
     const featuredStory: Article = {
       id: "live-feat",
@@ -620,16 +635,34 @@ export async function POST(request: Request) {
       ...featFields
     };
 
-    // AI & Fintech Radar (next 2 articles containing AI or Fintech keywords)
+    // Helper to find next matching unused article
+    const findUnusedArticle = (filterFn?: (art: typeof sorted[0]) => boolean) => {
+      for (const art of sorted) {
+        if (usedUrls.has(art.link)) continue;
+        if (!filterFn || filterFn(art)) {
+          usedUrls.add(art.link);
+          return art;
+        }
+      }
+      // If no match found with filter, grab first unused article
+      for (const art of sorted) {
+        if (usedUrls.has(art.link)) continue;
+        usedUrls.add(art.link);
+        return art;
+      }
+      return null;
+    };
+
+    // AI & Fintech Radar (next 2 articles matching keywords)
     const aiFintechList: Article[] = [];
-    let idx = 1;
-    while (aiFintechList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      const isAiFin = /ai|fintech|payment|tech|openai|nvidia|gpu|model|llm|banking-tech/i.test(art.title + " " + art.description);
-      if (isAiFin) {
+    for (let i = 0; i < 2; i++) {
+      const art = findUnusedArticle((a) =>
+        /ai|fintech|payment|tech|openai|nvidia|gpu|model|llm|banking-tech/i.test(a.title + " " + a.description)
+      );
+      if (art) {
         const fields = generateArticleFields(art.title, art.description, "ai");
         aiFintechList.push({
-          id: `live-ai-${idx}`,
+          id: `live-ai-${i}`,
           headline: art.title,
           sourceName: art.source,
           sourceTitle: art.title,
@@ -637,37 +670,18 @@ export async function POST(request: Request) {
           ...fields
         });
       }
-      idx++;
     }
 
-    // Fill AI fallback
-    idx = 1;
-    while (aiFintechList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      if (!aiFintechList.some((a) => a.sourceUrl === art.link) && art.link !== topStory.link) {
-        const fields = generateArticleFields(art.title, art.description, "ai");
-        aiFintechList.push({
-          id: `live-ai-fallback-${idx}`,
-          headline: art.title,
-          sourceName: art.source,
-          sourceTitle: art.title,
-          sourceUrl: art.link,
-          ...fields
-        });
-      }
-      idx++;
-    }
-
-    // Strategy & MBA Desk (next 2 articles containing consulting or strategy keywords)
+    // Strategy & MBA Desk (next 2 articles matching keywords)
     const consultingList: Article[] = [];
-    idx = 1;
-    while (consultingList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      const isCons = /consulting|mckinsey|bcg|bain|mba|strategy|merger|acquisition|corp/i.test(art.title + " " + art.description);
-      if (isCons && art.link !== topStory.link && !aiFintechList.some((a) => a.sourceUrl === art.link)) {
+    for (let i = 0; i < 2; i++) {
+      const art = findUnusedArticle((a) =>
+        /consulting|mckinsey|bcg|bain|mba|strategy|merger|acquisition|corp/i.test(a.title + " " + a.description)
+      );
+      if (art) {
         const fields = generateArticleFields(art.title, art.description, "consulting");
         consultingList.push({
-          id: `live-con-${idx}`,
+          id: `live-con-${i}`,
           headline: art.title,
           sourceName: art.source,
           sourceTitle: art.title,
@@ -675,46 +689,18 @@ export async function POST(request: Request) {
           ...fields
         });
       }
-      idx++;
     }
 
-    // Fill consulting fallback
-    idx = 1;
-    while (consultingList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      if (
-        art.link !== topStory.link &&
-        !aiFintechList.some((a) => a.sourceUrl === art.link) &&
-        !consultingList.some((c) => c.sourceUrl === art.link)
-      ) {
-        const fields = generateArticleFields(art.title, art.description, "consulting");
-        consultingList.push({
-          id: `live-con-fallback-${idx}`,
-          headline: art.title,
-          sourceName: art.source,
-          sourceTitle: art.title,
-          sourceUrl: art.link,
-          ...fields
-        });
-      }
-      idx++;
-    }
-
-    // Company Watchlist (next 2 articles matching tracked companies)
+    // Company Watchlist (next 2 articles matching keywords)
     const watchlistList: Article[] = [];
-    idx = 1;
-    while (watchlistList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      const isWatch = /nvidia|tesla|microsoft|blackstone|jpmorgan|morgan|chase|bank|mckinsey|bcg|bain/i.test(art.title + " " + art.description);
-      if (
-        isWatch &&
-        art.link !== topStory.link &&
-        !aiFintechList.some((a) => a.sourceUrl === art.link) &&
-        !consultingList.some((c) => c.sourceUrl === art.link)
-      ) {
+    for (let i = 0; i < 2; i++) {
+      const art = findUnusedArticle((a) =>
+        /nvidia|tesla|microsoft|blackstone|jpmorgan|morgan|chase|bank|mckinsey|bcg|bain/i.test(a.title + " " + a.description)
+      );
+      if (art) {
         const fields = generateArticleFields(art.title, art.description, "watchlist");
         watchlistList.push({
-          id: `live-watch-${idx}`,
+          id: `live-watch-${i}`,
           headline: art.title,
           sourceName: art.source,
           sourceTitle: art.title,
@@ -722,66 +708,43 @@ export async function POST(request: Request) {
           ...fields
         });
       }
-      idx++;
-    }
-
-    // Fill watchlist fallback
-    idx = 1;
-    while (watchlistList.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      if (
-        art.link !== topStory.link &&
-        !aiFintechList.some((a) => a.sourceUrl === art.link) &&
-        !consultingList.some((c) => c.sourceUrl === art.link) &&
-        !watchlistList.some((w) => w.sourceUrl === art.link)
-      ) {
-        const fields = generateArticleFields(art.title, art.description, "watchlist");
-        watchlistList.push({
-          id: `live-watch-fallback-${idx}`,
-          headline: art.title,
-          sourceName: art.source,
-          sourceTitle: art.title,
-          sourceUrl: art.link,
-          ...fields
-        });
-      }
-      idx++;
     }
 
     // Smart Reads (next 2 academic/research papers)
     const smartReads: SmartRead[] = [];
-    idx = 1;
-    while (smartReads.length < 2 && idx < sorted.length) {
-      const art = sorted[idx];
-      if (
-        art.link !== topStory.link &&
-        !aiFintechList.some((a) => a.sourceUrl === art.link) &&
-        !consultingList.some((c) => c.sourceUrl === art.link) &&
-        !watchlistList.some((w) => w.sourceUrl === art.link)
-      ) {
+    for (let i = 0; i < 2; i++) {
+      const art = findUnusedArticle();
+      if (art) {
         const fields = generateSmartReadFields(art.title, art.description);
         smartReads.push({
-          id: `live-smart-${idx}`,
+          id: `live-smart-${i}`,
           headline: art.title,
           sourceName: art.source,
           sourceTitle: art.title,
           sourceUrl: art.link,
           ...fields
         });
-      }
-      idx++;
-    }
-
-    // Fill smart reads fallback
-    if (smartReads.length < 2) {
-      const needed = 2 - smartReads.length;
-      for (let i = 0; i < needed; i++) {
-        smartReads.push(baseEdition.smartReads[i]);
       }
     }
 
     // Market Commentary Headline
     const macroArticle = sorted.find((art) => /fed|inflation|interest|rate|yield|dxy|macro|imf|world bank/i.test(art.title + " " + art.description)) || topStory;
+
+    // What to Watch Next Agenda (next 3 agenda items mapped dynamically from the RSS array)
+    const whatToWatchNext: WatchItem[] = [];
+    for (let i = 0; i < 3; i++) {
+      const art = findUnusedArticle();
+      if (art) {
+        const category = /ai|openai|nvidia|llm/i.test(art.title + " " + art.description) ? "ai" :
+                         (/fintech|pay|upi/i.test(art.title + " " + art.description) ? "fintech" : "watchlist");
+        const event = art.title.length > 55 ? art.title.substring(0, 55) + "..." : art.title;
+        const actionable = generateWhatToWatch(art.title, art.description, category);
+        whatToWatchNext.push({
+          event,
+          actionable
+        });
+      }
+    }
 
     // Construct live RSS-based Newspaper Edition
     const liveEdition: NewspaperEdition = {
@@ -803,7 +766,7 @@ export async function POST(request: Request) {
       consultingMbaDesk: consultingList,
       companyWatchlist: watchlistList,
       smartReads,
-      whatToWatchNext: baseEdition.whatToWatchNext
+      whatToWatchNext
     };
 
     // Send the compiled newsletter immediately
@@ -825,18 +788,26 @@ export async function POST(request: Request) {
       html: emailHtml,
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       message: "Latest Quick Finance edition generated and emailed successfully.",
       edition: liveEdition,
     });
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+    return res;
   } catch (error: any) {
     console.error("RSS manual refresh error:", error);
-    return NextResponse.json(
+    const res = NextResponse.json(
       {
         error: error?.message || "Internal server error occurred during RSS news refresh.",
       },
       { status: 500 }
     );
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+    return res;
   }
 }

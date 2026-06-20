@@ -254,7 +254,7 @@ export default function NewspaperPage() {
                           rel="noopener noreferrer"
                           className="font-serif font-bold text-[#7f1d1d] hover:text-black hover:underline"
                         >
-                          Read Full &rarr;
+                          Read full article →
                         </a>
                       </div>
                     </div>
@@ -319,7 +319,7 @@ export default function NewspaperPage() {
                       rel="noopener noreferrer"
                       className="font-serif font-bold text-[#7f1d1d] hover:text-black hover:underline"
                     >
-                      Read Full Article &rarr;
+                      Read full article →
                     </a>
                   </div>
                 </div>

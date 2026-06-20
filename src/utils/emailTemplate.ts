@@ -37,7 +37,7 @@ export function buildEmailHtml(edition: any) {
         <strong>What to watch:</strong> ${art.whatToWatch}
       </p>
       <div style="font-family: monospace; font-size: 10px; color: #78716c; text-transform: uppercase;">
-        Source: ${art.sourceName} | <a href="${art.sourceUrl}" style="color: #7f1d1d; text-decoration: none; font-weight: bold;">Read Full Article &rarr;</a>
+        Source: ${art.sourceName} | <a href="${art.sourceUrl}" style="color: #7f1d1d; text-decoration: none; font-weight: bold;">Read full article →</a>
       </div>
     </div>
   `;
@@ -58,7 +58,7 @@ export function buildEmailHtml(edition: any) {
         "${read.brainUpgrade}"
       </div>
       <div style="font-family: monospace; font-size: 10px; color: #78716c; text-transform: uppercase;">
-        Source: ${read.sourceName} | <a href="${read.sourceUrl}" style="color: #7f1d1d; text-decoration: none; font-weight: bold;">Read Full &rarr;</a>
+        Source: ${read.sourceName} | <a href="${read.sourceUrl}" style="color: #7f1d1d; text-decoration: none; font-weight: bold;">Read full article →</a>
       </div>
     </div>
   `;

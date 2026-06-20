@@ -59,7 +59,7 @@ export default function ArticleCard({ article, isLead = false }: ArticleCardProp
           rel="noopener noreferrer"
           className="text-xs font-serif font-bold text-[#7f1d1d] hover:text-black border-b-2 border-transparent hover:border-black transition-all pb-0.5 inline-block uppercase tracking-wider"
         >
-          Read Full Article &rarr;
+          Read full article →
         </a>
       </div>
     </article>

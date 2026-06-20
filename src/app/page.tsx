@@ -27,20 +27,46 @@ export default function NewspaperPage() {
     }
   }, []);
 
-  const handleGenerateEdition = () => {
+  const handleGenerateEdition = async () => {
     setIsGenerating(true);
     setMessage(null);
-    setTimeout(() => {
-      setIsGenerating(false);
-      setMessage("Success: Scraper triggered. Mock generation completed for June 20, 2026 Evening Edition (Placeholder active).");
-      // Optionally toggle to another edition to show change
-      if (currentEdition.id === "2026-06-20-morning") {
-        const eveningEdition = MOCK_EDITIONS.find(e => e.id === "2026-06-19-evening");
-        if (eveningEdition) setCurrentEdition(eveningEdition);
-      } else {
-        setCurrentEdition(MOCK_EDITIONS[0]);
+
+    let recipientEmail = "govindatapdia123@gmail.com";
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("pref_emailAddress");
+      if (savedEmail) {
+        recipientEmail = savedEmail;
       }
-    }, 1500);
+    }
+
+    try {
+      const response = await fetch("/api/refresh-news", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: recipientEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.edition) {
+        setCurrentEdition(data.edition);
+      }
+
+      if (response.ok && data.success) {
+        setMessage("Latest Quick Finance edition generated and emailed successfully.");
+      } else {
+        setMessage(`Error: ${data.error || "Live news API not configured yet. Showing demo edition."}`);
+      }
+    } catch (error: any) {
+      console.error(error);
+      setMessage(`Error: ${error.message || "A network error occurred while generating the edition."}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSendEmail = async () => {
@@ -339,10 +365,10 @@ export default function NewspaperPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Scraping...</span>
+                  <span>Fetching latest signal...</span>
                 </>
               ) : (
-                <span>🔄 Generate Edition</span>
+                <span>🔄 Refresh Latest News</span>
               )}
             </button>
 

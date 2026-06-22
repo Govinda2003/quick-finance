@@ -136,77 +136,103 @@ function generateTranslation(title: string, description: string, category: strin
   const titleLower = title.toLowerCase();
   const descLower = description.toLowerCase();
 
-  let whoBenefits = "well-capitalized market leaders";
-  let whoLoses = "inefficient legacy players";
-  let sectorsImpacted = "broad enterprise sectors";
-  let segmentMatters = "macro and public markets";
-
-  if (category === "ai" || titleLower.includes("ai") || titleLower.includes("nvidia") || descLower.includes("gpu")) {
-    whoBenefits = "hyperscalers, chip design firms (like NVIDIA), and specialized infrastructure operators";
-    whoLoses = "legacy SaaS platforms and firms slower to automate operational overheads";
-    sectorsImpacted = "technology hardware, enterprise software, and digital infrastructure";
-    segmentMatters = "venture capital, public markets, and strategy consulting teams advising on tech audits";
-  } else if (category === "fintech" || titleLower.includes("payment") || titleLower.includes("bank") || descLower.includes("upi")) {
-    whoBenefits = "payment aggregators, merchant services, and agile banking partners";
-    whoLoses = "traditional credit card networks and legacy merchant acquirers relying on high take-rates";
-    sectorsImpacted = "fintech checkout services, cross-border remittance, and retail banking";
-    segmentMatters = "banking-tech, venture capital, and digital commerce startups";
-  } else if (category === "consulting" || titleLower.includes("mckinsey") || titleLower.includes("bcg") || descLower.includes("bain")) {
-    whoBenefits = "specialized strategic consultancies and business transformation execution firms";
-    whoLoses = "mid-tier firms with vanilla advisory offerings that fail to demonstrate high implementation ROI";
-    sectorsImpacted = "corporate strategy, enterprise management consulting, and MBA advisory pipelines";
-    segmentMatters = "private equity (operational value creation), corporate strategy, and talent sourcing";
-  } else if (titleLower.includes("oil") || titleLower.includes("brent") || titleLower.includes("energy")) {
-    whoBenefits = "oil producers, green energy ESG infrastructure assets, and alternative energy corridors";
-    whoLoses = "aviation, paint manufacturers, logistics networks, and oil-import dependent countries";
-    sectorsImpacted = "crude oil logistics, maritime shipping routes, and retail energy prices";
-    segmentMatters = "macroeconomics, commodities trading, and public equities";
-  } else if (titleLower.includes("fed") || titleLower.includes("inflation") || titleLower.includes("rate") || descLower.includes("yield")) {
-    whoBenefits = "yield-chasing bondholders and cash-rich corporate balance sheets";
-    whoLoses = "highly leveraged venture-backed startups and interest-sensitive real estate funds";
-    sectorsImpacted = "fixed income markets, corporate debt origination, and banking credit channels";
-    segmentMatters = "macro risk modeling, venture capital hurdles, and private equity cost of debt";
+  if (description.trim().length < 40 || description.trim() === title.trim()) {
+    return "Additional context was not available from the source feed.";
   }
 
-  return `Translation: this could move money. ${whoBenefits.charAt(0).toUpperCase() + whoBenefits.slice(1)} stand to benefit, while ${whoLoses} face headwinds. The key impacted sectors are ${sectorsImpacted}. This carries structural significance for ${segmentMatters}.`;
+  if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. Changes in interest rates and bond yields affect borrowing costs, bank profitability, stock valuations, and overall market liquidity.";
+  }
+
+  if (/venture|startup|funding|valuation|vc/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. Venture funding conditions influence startup valuations, fundraising activity, and exit opportunities across the innovation ecosystem.";
+  }
+
+  if (/cyber|security|hack|breach|ransomware/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. Increased cybersecurity spending benefits security vendors while raising compliance and protection costs for enterprises.";
+  }
+
+  if (/private equity|buyout|lbo|leverage/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. Buyout activity and leverage conditions directly impact private equity returns, financing costs, and acquisition opportunities.";
+  }
+
+  if (/ai|openai|nvidia|llm|gpu|model/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. AI adoption drives demand for compute infrastructure, cloud services, semiconductors, and enterprise software.";
+  }
+
+  if (/payment|fintech|upi|transaction/i.test(titleLower + " " + descLower)) {
+    return "Translation: this could move money. Payment innovation affects transaction costs, merchant economics, and the competitive landscape of digital finance.";
+  }
+
+  return "Translation: this development may influence market sentiment, competitive positioning, and future capital allocation decisions.";
 }
 
 function generateWhyThisMatters(title: string, description: string, category: string): string {
-  const titleLower = title.toLowerCase();
-  const descLower = description.toLowerCase();
+  const text = (title + " " + description).toLowerCase();
 
-  if (category === "ai" || titleLower.includes("ai") || titleLower.includes("nvidia")) {
-    return "AI hardware deployment commands high capex, raising hurdle rates for standard SaaS valuation multiples. If you are modeling corporate finance in tech, tracking GPU shipping volumes and chip yields is a non-negotiable metric.";
-  }
-  if (category === "fintech" || titleLower.includes("payment") || descLower.includes("bank")) {
-    return "Cross-border payment automation reduces settlement friction and interchange leakages. For fintech builders, payment orchestration is a major margins driver—knowing how to optimize take-rates is crucial.";
-  }
-  if (category === "consulting" || titleLower.includes("mckinsey") || titleLower.includes("bcg") || descLower.includes("bain")) {
-    return "Management consultants are shifting from isolated proof-of-concepts to concrete business transformations. Knowing how to map operational optimization directly to balance-sheet metrics is a major career differentiator.";
-  }
-  if (titleLower.includes("oil") || titleLower.includes("brent") || titleLower.includes("energy")) {
-    return "Geopolitical energy corridors dictate manufacturing margins and shipping insurance costs. High oil prices pressure refining margins and weaken local currencies in import-dependent countries.";
-  }
-  if (titleLower.includes("fed") || titleLower.includes("rate") || titleLower.includes("inflation")) {
-    return "Discount rate calculations govern overall buyout modeling and venture debt interest expenses. A hawkish central bank pivot raises PE hurdle rates and changes the valuation floor for high-growth assets.";
+  if (description.trim().length < 40 || description.trim() === title.trim()) {
+    return "Additional context was not available from the source feed.";
   }
 
-  return "Market structures are consolidating as operational cost pressures rise. Valuations must adapt to changing interest rate dynamics and supply-chain efficiency milestones.";
+  if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(text)) {
+    return "This matters because interest-rate expectations shape equity valuations, bond pricing, loan demand, and the cost of capital for companies and investors.";
+  }
+
+  if (/venture|startup|funding|valuation|vc/i.test(text)) {
+    return "This matters because VC funding trends signal investor risk appetite, startup runway strength, and the pricing environment for future exits.";
+  }
+
+  if (/cyber|security|hack|breach|ransomware/i.test(text)) {
+    return "This matters because cybersecurity demand is becoming a board-level spending priority as companies face higher regulatory, operational, and reputational risk.";
+  }
+
+  if (/private equity|buyout|lbo|leverage/i.test(text)) {
+    return "This matters because private equity returns depend heavily on financing costs, operational improvements, exit multiples, and debt-market conditions.";
+  }
+
+  if (/ai|openai|nvidia|llm|gpu|model/i.test(text)) {
+    return "This matters because AI adoption is reshaping enterprise software budgets, cloud infrastructure spending, semiconductor demand, and automation strategy.";
+  }
+
+  if (/payment|fintech|upi|transaction/i.test(text)) {
+    return "This matters because fintech infrastructure can reduce friction, lower transaction costs, and shift revenue away from legacy financial intermediaries.";
+  }
+
+  return "This matters because the development may affect investor sentiment, company strategy, competitive positioning, or sector-level capital allocation.";
 }
 
 function generateWhatToWatch(title: string, description: string, category: string): string {
-  const titleLower = title.toLowerCase();
+  const text = (title + " " + description).toLowerCase();
 
-  if (category === "ai" || titleLower.includes("ai")) {
-    return "Monitor Blackwell shipping volumes, hyperscaler cloud capex budgets, and GPU rental pricing charts.";
+  if (description.trim().length < 40 || description.trim() === title.trim()) {
+    return "Additional context was not available from the source feed.";
   }
-  if (category === "fintech" || titleLower.includes("payment")) {
-    return "Watch transaction success rates and changes in cross-border checkout interchange laws next quarter.";
+
+  if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(text)) {
+    return "Watch upcoming inflation data, bond yields, central bank commentary, and bank stock reactions.";
   }
-  if (category === "consulting") {
-    return "Watch how enterprise software procurement processes tighten and monitor MBA consulting recruitment hiring numbers.";
+
+  if (/venture|startup|funding|valuation|vc/i.test(text)) {
+    return "Watch follow-on funding rounds, valuation marks, startup exits, and investor commentary on risk appetite.";
   }
-  return "Watch central bank rate guidance, Dollar Index (DXY) stability, and index support levels at the Monday market open.";
+
+  if (/cyber|security|hack|breach|ransomware/i.test(text)) {
+    return "Watch enterprise cybersecurity budgets, customer adoption, breach disclosures, and regulatory compliance updates.";
+  }
+
+  if (/private equity|buyout|lbo|leverage/i.test(text)) {
+    return "Watch debt financing costs, deal activity, portfolio exits, and private credit market conditions.";
+  }
+
+  if (/ai|openai|nvidia|llm|gpu|model/i.test(text)) {
+    return "Watch cloud capex, GPU demand, enterprise AI adoption, and product monetization updates.";
+  }
+
+  if (/payment|fintech|upi|transaction/i.test(text)) {
+    return "Watch payment volumes, merchant adoption, transaction costs, and regulatory updates around digital finance.";
+  }
+
+  return "Watch follow-up announcements, market reaction, competitor responses, and regulatory developments.";
 }
 
 // Smart context-aware content generator for mock fields
@@ -262,70 +288,75 @@ function generateArticleFields(title: string, description: string, category: str
 }
 
 function generateSmartReadFields(title: string, description: string) {
-  const cleanDesc = description.trim();
-  const normalizedTitle = title.trim();
-  const sentences = cleanDesc
-    .match(/[^.!?]+[.!?]+/g)
-    ?.map(s => s.trim())
-    .map(s => removeSourceNames(s))
-    .filter(s => s.length > 15 && !/read more|full coverage|click here|photo|copyright/i.test(s)) || [];
+  const text = (title + " " + description).toLowerCase();
+
+  const fallbackMessage = "Additional context was not available from the source feed.";
 
   const takeaways: string[] = [];
+  const cleanDesc = description.trim();
+  const normalizedTitle = title.trim();
+
+  const sentences =
+    cleanDesc
+      .match(/[^.!?]+[.!?]+/g)
+      ?.map((s) => s.trim())
+      .map((s) => removeSourceNames(s))
+      .filter(
+        (s) =>
+          s.length > 15 &&
+          !/read more|full coverage|click here|photo|copyright/i.test(s) &&
+          getSentenceSimilarity(s, normalizedTitle) < 0.8
+      ) || [];
 
   for (const s of sentences) {
     if (takeaways.length >= 3) break;
-
-    // Check similarity with headline/title
-    if (getSentenceSimilarity(s, normalizedTitle) >= 0.8) continue;
-
-    let isDuplicate = false;
-    for (const added of takeaways) {
-      if (getSentenceSimilarity(s, added) >= 0.8) {
-        isDuplicate = true;
-        break;
-      }
+    if (!takeaways.some((added) => getSentenceSimilarity(s, added) >= 0.8)) {
+      takeaways.push(s);
     }
-    if (isDuplicate) continue;
-
-    takeaways.push(s);
   }
 
-  const smartFallbacks = [
-    "Traditional explainability tools are proving mathematically unstable for high-dimensional models.",
-    "Proposed algorithmic initializations claims up to 10x compute reduction in early evaluations.",
-    "SSMs like Mamba are replacing Transformers for long-context tasks but face training bottlenecks."
-  ];
-
-  let fallbackIdx = 0;
   while (takeaways.length < 3) {
-    const fb = smartFallbacks[fallbackIdx % smartFallbacks.length];
-    let isDuplicate = false;
-    for (const added of takeaways) {
-      if (getSentenceSimilarity(fb, added) >= 0.8) {
-        isDuplicate = true;
-        break;
-      }
-    }
-    if (!isDuplicate) {
-      takeaways.push(fb);
-    }
-    fallbackIdx++;
+    takeaways.push(fallbackMessage);
   }
 
   let hook = "Not gonna lie, this matters.";
-  if (title.toLowerCase().includes("model") || title.toLowerCase().includes("llm") || title.toLowerCase().includes("ai")) {
-    hook = "This is the kind of update that quietly changes the game.";
-  }
+  let brainUpgrade =
+    "What second-order effect could this create for markets, companies, or investors over the next 6–12 months?";
 
-  let brainUpgrade = "What happens if this scales without increasing marginal cost? Can synthetic data bypass raw internet data constraints?";
-  if (title.toLowerCase().includes("model") || title.toLowerCase().includes("llm")) {
-    brainUpgrade = "Can local model explanation algorithms be trusted for high-frequency trading decision compliance?";
+  if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank|capital markets)\b/i.test(text)) {
+    hook = "This macro update can quietly move capital flows.";
+    brainUpgrade =
+      "How would delayed rate cuts or tighter capital markets change discount rates, bank lending, and equity valuations?";
+  } else if (/\b(venture|vc|startup|funding|valuation|exit|ipo)\b/i.test(text)) {
+    hook = "This funding signal matters for startup and private-market valuations.";
+    brainUpgrade =
+      "Are investors rewarding real profitability now, or is growth still enough to justify premium startup valuations?";
+  } else if (/\b(private equity|buyout|lbo|leverage|private credit)\b/i.test(text)) {
+    hook = "This is a private-capital signal hiding in plain sight.";
+    brainUpgrade =
+      "Can operational value creation offset higher debt costs, or will buyout returns compress further?";
+  } else if (/\b(ai|openai|nvidia|llm|gpu|model|models|data strategy)\b/i.test(text)) {
+    hook = "This is the kind of AI update that quietly changes the game.";
+    brainUpgrade =
+      "If AI adoption scales here, who captures the economics: model providers, cloud platforms, data owners, or end-user companies?";
+  } else if (/\b(payment|fintech|upi|transaction|checkout)\b/i.test(text)) {
+    hook = "This fintech shift can affect transaction economics.";
+    brainUpgrade =
+      "Can payment networks defend margins if real-time settlement and lower-cost rails keep expanding?";
+  } else if (/\b(consulting|strategy|transformation|mckinsey|bain|bcg)\b/i.test(text)) {
+    hook = "This strategy piece points to a boardroom priority shift.";
+    brainUpgrade =
+      "Will companies spend more on advisory work, or will automation force consulting firms to prove measurable implementation ROI?";
+  } else if (/\b(oil|brent|energy|crude|commodity|shipping)\b/i.test(text)) {
+    hook = "This energy update can feed directly into margins and inflation.";
+    brainUpgrade =
+      "How would higher energy or shipping costs flow through corporate margins, inflation expectations, and consumer demand?";
   }
 
   return {
     hook,
     takeaways,
-    brainUpgrade
+    brainUpgrade,
   };
 }
 
@@ -722,8 +753,8 @@ export async function POST(request: Request) {
         headline: macroArticle.title,
         driver: macroArticle.description.substring(0, 150) + "...",
         sentiment: isMorning ? "Tense risk-off consolidation" : "Cautious macro sentiment pricing",
-        translation: "Translation: this could move money. Yield fluctuations are restructuring leverage models.",
-        whatToWatchNext: "Watch the opening indexes and central bank press alerts next week."
+        translation: generateTranslation(macroArticle.title, macroArticle.description, "macro"),
+        whatToWatchNext: generateWhatToWatch(macroArticle.title, macroArticle.description, "macro")
       },
       tickerData,
       featuredStory,

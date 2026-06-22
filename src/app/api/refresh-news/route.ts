@@ -27,27 +27,27 @@ function decodeHtmlEntities(str: string): string {
 
 function cleanTextContent(htmlStr: string): string {
   if (!htmlStr) return "";
-  
+
   let decoded = decodeHtmlEntities(htmlStr);
-  
+
   decoded = decoded.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "");
   decoded = decoded.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "");
-  
+
   decoded = decoded.replace(/<\/p>/gi, "\n");
   decoded = decoded.replace(/<br\s*\/?>/gi, "\n");
   decoded = decoded.replace(/<\/h[1-6]>/gi, "\n");
   decoded = decoded.replace(/<\/div>/gi, "\n");
   decoded = decoded.replace(/<li>/gi, "\n• ");
-  
+
   let stripped = decoded.replace(/<[^>]*>?/gm, "");
-  
+
   stripped = decodeHtmlEntities(stripped);
-  
+
   stripped = stripped
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n+/g, "\n\n")
     .trim();
-    
+
   return stripped;
 }
 
@@ -64,7 +64,7 @@ function sanitizeUrl(url: string): string {
 function parseRss(xmlText: string, defaultSourceName: string): Array<{ title: string; link: string; description: string; pubDate: string; source: string }> {
   const items: Array<{ title: string; link: string; description: string; pubDate: string; source: string }> = [];
   const itemMatches = xmlText.match(/<item[\s\S]*?>[\s\S]*?<\/item>/g) || [];
-  
+
   for (const itemXml of itemMatches) {
     const extractTag = (tag: string) => {
       const regex = new RegExp(`<${tag}[^>]*?>([\\s\\S]*?)<\/${tag}>`, 'i');
@@ -77,12 +77,12 @@ function parseRss(xmlText: string, defaultSourceName: string): Array<{ title: st
       }
       return val;
     };
-    
+
     const title = cleanTextContent(extractTag("title"));
     const link = sanitizeUrl(extractTag("link"));
     const description = cleanTextContent(extractTag("description"));
     const pubDate = cleanTextContent(extractTag("pubDate"));
-    
+
     let source = defaultSourceName;
     if (link && link !== "#") {
       try {
@@ -101,9 +101,9 @@ function parseRss(xmlText: string, defaultSourceName: string): Array<{ title: st
         else if (host.includes("bloomberg.com")) source = "Bloomberg";
         else if (host.includes("wsj.com")) source = "Wall Street Journal";
         else if (host.includes("ft.com")) source = "Financial Times";
-      } catch (e) {}
+      } catch (e) { }
     }
-    
+
     if (title && link && link !== "#") {
       items.push({ title, link, description, pubDate, source });
     }
@@ -114,14 +114,14 @@ function parseRss(xmlText: string, defaultSourceName: string): Array<{ title: st
 function getSentenceSimilarity(s1: string, s2: string): number {
   const words1 = new Set(s1.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean));
   const words2 = new Set(s2.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean));
-  
+
   if (words1.size === 0 || words2.size === 0) return 0;
-  
+
   let intersection = 0;
   words1.forEach(word => {
     if (words2.has(word)) intersection++;
   });
-  
+
   const union = words1.size + words2.size - intersection;
   return intersection / union;
 }
@@ -196,7 +196,7 @@ function generateWhyThisMatters(title: string, description: string, category: st
 
 function generateWhatToWatch(title: string, description: string, category: string): string {
   const titleLower = title.toLowerCase();
-  
+
   if (category === "ai" || titleLower.includes("ai")) {
     return "Monitor Blackwell shipping volumes, hyperscaler cloud capex budgets, and GPU rental pricing charts.";
   }
@@ -242,44 +242,9 @@ function generateArticleFields(title: string, description: string, category: str
   }
 
   // Fallbacks if we don't have exactly 3 unique takeaways
-  const fallbacks: Record<string, string[]> = {
-    ai: [
-      "The integration of advanced model capabilities is driving enterprise workflow automation at scale.",
-      "Hyperscalers continue to command the bulk of GPU infrastructure spend, elevating valuation floors.",
-      "Deployment focus is rapidly shifting from sandbox proof-of-concepts to production-grade ROI."
-    ],
-    fintech: [
-      "Cross-border payment corridors are becoming increasingly native and frictionless.",
-      "Fintech platforms are leveraging real-time settlement APIs to disintermediate traditional card networks.",
-      "Regulatory compliance costs are rising, favoring well-capitalized market leaders."
-    ],
-    consulting: [
-      "New frameworks urge enterprise buyers to stop isolated pilots and consolidate spend.",
-      "Firms are pivoting towards high-margin segments in response to margin compression.",
-      "Operational value creation is taking precedence over raw financial leverage in buyouts."
-    ],
-    watchlist: [
-      "Blackwell and optics bottlenecks have resolved, accelerating shipping volumes.",
-      "Private capital allocation is aggressively chasing digital asset infrastructure.",
-      "Supply chain consolidation aims to eliminate overheads and overlapping margins."
-    ]
-  };
-
-  const categoryFallbacks = fallbacks[category] || fallbacks.watchlist;
-  let fallbackIdx = 0;
+  const fallbackMessage = "Additional context was not available from the source feed.";
   while (takeaways.length < 3) {
-    const fb = categoryFallbacks[fallbackIdx % categoryFallbacks.length];
-    let isDuplicate = false;
-    for (const added of takeaways) {
-      if (getSentenceSimilarity(fb, added) >= 0.8) {
-        isDuplicate = true;
-        break;
-      }
-    }
-    if (!isDuplicate) {
-      takeaways.push(fb);
-    }
-    fallbackIdx++;
+    takeaways.push(fallbackMessage);
   }
 
   const hook = "Not gonna lie, this matters.";
@@ -565,7 +530,7 @@ export async function POST(request: Request) {
           if (Date.now() - pubTime < 24 * 60 * 60 * 1000) {
             score += 15;
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       return { art, score };
@@ -736,7 +701,7 @@ export async function POST(request: Request) {
       const art = findUnusedArticle();
       if (art) {
         const category = /ai|openai|nvidia|llm/i.test(art.title + " " + art.description) ? "ai" :
-                         (/fintech|pay|upi/i.test(art.title + " " + art.description) ? "fintech" : "watchlist");
+          (/fintech|pay|upi/i.test(art.title + " " + art.description) ? "fintech" : "watchlist");
         const event = art.title.length > 55 ? art.title.substring(0, 55) + "..." : art.title;
         const actionable = generateWhatToWatch(art.title, art.description, category);
         whatToWatchNext.push({

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,7 @@ export async function GET() {
         value = `$${data.price.toFixed(2)}`;
       } else if (t.format === "GOLD_INR") {
         const inr = data.price * 83;
-        value = `?${Math.round(inr / 10).toLocaleString("en-IN")}`;
+        value = "\u20B9" + Math.round(inr / 10).toLocaleString("en-IN");
       }
 
       return { symbol: t.label, value, change, isUp, type: t.format.includes("INDEX") ? "index" : t.format === "GOLD_INR" || t.format === "USD_COMMODITY" ? "macro" : "stock" };
@@ -61,4 +61,7 @@ export async function GET() {
   const tickerData = results.filter(Boolean);
   return NextResponse.json({ success: true, tickerData });
 }
+
+
+
 

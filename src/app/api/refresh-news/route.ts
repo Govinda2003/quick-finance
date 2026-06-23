@@ -447,7 +447,7 @@ export async function POST(request: Request) {
     const feeds = [
       { name: "Reuters Business", url: `https://news.google.com/rss/search?q=site:reuters.com/business+OR+site:reuters.com/markets&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
       { name: "The Economic Times", url: `https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms?t=${ts}` },
-      { name: "Moneycontrol", url: `https://www.moneycontrol.com/rss/latestnews.xml?t=${ts}` },
+      // { name: "Moneycontrol", url: `https://www.moneycontrol.com/rss/latestnews.xml?t=${ts}` },
       { name: "LiveMint", url: `https://www.livemint.com/rss/markets?t=${ts}` },
       { name: "CNBC Business", url: `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147&t=${ts}` },
       { name: "TechCrunch AI", url: `https://techcrunch.com/category/artificial-intelligence/feed/?t=${ts}` },

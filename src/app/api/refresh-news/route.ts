@@ -359,14 +359,27 @@ function generateSmartReadFields(title: string, description: string) {
     brainUpgrade,
   };
 }
-function isFreshArticle(pubDate: string, maxAgeHours = 36): boolean {
+
+// ─── FRESHNESS GATES ────────────────────────────────────────────────────────
+// Daily news sources: strict 36-hour window
+// Evergreen consulting/strategy sources: 7-day window (they don't publish daily)
+const EVERGREEN_SOURCES = ["mckinsey insights", "bain insights", "bcg insights", "harvard business review"];
+
+function isFreshArticle(pubDate: string, source: string): boolean {
   if (!pubDate) return false;
 
   const pubTime = new Date(pubDate).getTime();
   if (isNaN(pubTime)) return false;
 
   const ageMs = Date.now() - pubTime;
-  return ageMs >= 0 && ageMs <= maxAgeHours * 60 * 60 * 1000;
+  if (ageMs < 0) return false; // future-dated articles rejected
+
+  const isEvergreen = EVERGREEN_SOURCES.some(s => source.toLowerCase().includes(s));
+  const maxAgeMs = isEvergreen
+    ? 7 * 24 * 60 * 60 * 1000   // 7 days for consulting/HBR
+    : 36 * 60 * 60 * 1000;       // 36 hours for daily news
+
+  return ageMs <= maxAgeMs;
 }
 
 export async function POST(request: Request) {
@@ -440,14 +453,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Fetch and Parse 13 RSS Feeds
+    // 2. Fetch and Parse RSS Feeds
     const rawArticles: Array<{ title: string; link: string; description: string; pubDate: string; source: string }> = [];
 
     const ts = Date.now();
     const feeds = [
       { name: "Reuters Business", url: `https://news.google.com/rss/search?q=site:reuters.com/business+OR+site:reuters.com/markets&hl=en-US&gl=US&ceid=US:en&t=${ts}` },
       { name: "The Economic Times", url: `https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms?t=${ts}` },
-      // { name: "Moneycontrol", url: `https://www.moneycontrol.com/rss/latestnews.xml?t=${ts}` },
+      // { name: "Moneycontrol", url: `https://www.moneycontrol.com/rss/latestnews.xml?t=${ts}` },  // REMOVED: returned April 2024 stale data
       { name: "LiveMint", url: `https://www.livemint.com/rss/markets?t=${ts}` },
       { name: "CNBC Business", url: `https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147&t=${ts}` },
       { name: "TechCrunch AI", url: `https://techcrunch.com/category/artificial-intelligence/feed/?t=${ts}` },
@@ -480,26 +493,20 @@ export async function POST(request: Request) {
         }
       })
     );
-    // ADD THE LOG HERE
+
+    // ── LOG 1: Raw feed sample (one log only) ────────────────────────────────
     console.log(
-      "RSS SAMPLE:",
+      "RSS SAMPLE (raw, pre-filter):",
       rawArticles.slice(0, 10).map((a) => ({
         title: a.title,
         source: a.source,
         pubDate: a.pubDate,
-        parsedDate: new Date(a.pubDate).toString(),
+        parsedDate: new Date(a.pubDate).toISOString?.() ?? "invalid",
       }))
     );
-    console.log(
-      "RSS SAMPLE:",
-      rawArticles.slice(0, 10).map((a) => ({
-        title: a.title,
-        source: a.source,
-        pubDate: a.pubDate,
-        parsedDate: new Date(a.pubDate).toISOString?.()
-      }))
-    );
-    // Filter, Deduplicate and Rank Articles
+    console.log(`RSS TOTAL RAW: ${rawArticles.length} articles from ${feeds.length} feeds`);
+
+    // 3. Filter, Deduplicate and Rank Articles
     const filterKeywords = [
       "finance", "fintech", "pay", "bank", "venture", "equity", "funding", "investment", "capital",
       "crypto", "blockchain", "startup", "nvidia", "openai", "ai", "llm", "gpt", "model", "consulting",
@@ -511,28 +518,63 @@ export async function POST(request: Request) {
     const seenTitles = new Set<string>();
     const seenUrls = new Set<string>();
 
+    // Track rejection reasons for observability
+    let rejectedStale = 0;
+    let rejectedKeyword = 0;
+    let rejectedDuplicate = 0;
+
     for (const art of rawArticles) {
-      if (!isFreshArticle(art.pubDate, 36)) continue;
+      // Hard freshness gate (source-aware window)
+      if (!isFreshArticle(art.pubDate, art.source)) {
+        rejectedStale++;
+        continue;
+      }
 
       const titleLower = art.title.toLowerCase();
       const descLower = art.description.toLowerCase();
 
-      // 1. Filter: Check for keywords
+      // Keyword filter
       const matchesKeyword = filterKeywords.some(
         (kw) => titleLower.includes(kw) || descLower.includes(kw)
       );
-      if (!matchesKeyword) continue;
+      if (!matchesKeyword) {
+        rejectedKeyword++;
+        continue;
+      }
 
-      // 2. Remove duplicates
+      // Deduplication
       const normTitle = titleLower.replace(/[^a-z0-9]/g, "").substring(0, 30);
-      if (seenTitles.has(normTitle) || seenUrls.has(art.link)) continue;
+      if (seenTitles.has(normTitle) || seenUrls.has(art.link)) {
+        rejectedDuplicate++;
+        continue;
+      }
 
       seenTitles.add(normTitle);
       seenUrls.add(art.link);
       uniqueArticles.push(art);
     }
 
-    // 3. Rank by relevance
+    // ── LOG 2: UNIQUE FRESH ARTICLES — the critical post-filter checkpoint ───
+    console.log(
+      `UNIQUE FRESH ARTICLES: ${uniqueArticles.length} survived (rejected: ${rejectedStale} stale, ${rejectedKeyword} no-keyword, ${rejectedDuplicate} duplicate)`
+    );
+    console.log(
+      "UNIQUE FRESH SAMPLE:",
+      uniqueArticles.slice(0, 10).map((a) => ({
+        title: a.title,
+        source: a.source,
+        pubDate: a.pubDate,
+      }))
+    );
+
+    // ── Source diversity check ───────────────────────────────────────────────
+    const sourceCounts: Record<string, number> = {};
+    uniqueArticles.forEach(a => {
+      sourceCounts[a.source] = (sourceCounts[a.source] || 0) + 1;
+    });
+    console.log("SOURCE DISTRIBUTION:", sourceCounts);
+
+    // 4. Rank by relevance
     const scoredArticles = uniqueArticles.map((art) => {
       let score = 0;
       const titleLower = art.title.toLowerCase();
@@ -544,7 +586,7 @@ export async function POST(request: Request) {
         if (descLower.includes(kw)) score += 3;
       });
 
-      // Priority scoring: Market-moving > Macro > AI > Fintech > Consulting > MBA
+      // Category scoring
       const combinedText = (art.title + " " + art.description).toLowerCase();
       const isMarketMoving = /market-moving|earnings|acquisition|merger|buyout|deal|funding|ipo|shares|venture capital|equity/i.test(combinedText);
       const isMacro = /fed|inflation|interest|rate|yield|dxy|macro|central bank|imf/i.test(combinedText);
@@ -560,7 +602,7 @@ export async function POST(request: Request) {
       else if (isConsulting) score += 20;
       else if (isMba) score += 10;
 
-      // Boost specific high-quality sources
+      // Source quality boost
       const sourceLower = art.source.toLowerCase();
       if (
         sourceLower.includes("reuters") ||
@@ -575,7 +617,6 @@ export async function POST(request: Request) {
         score += 25;
       } else if (
         sourceLower.includes("economic times") ||
-        sourceLower.includes("moneycontrol") ||
         sourceLower.includes("livemint") ||
         sourceLower.includes("cnbc") ||
         sourceLower.includes("techcrunch")
@@ -583,13 +624,13 @@ export async function POST(request: Request) {
         score += 15;
       }
 
-      // Recency boost (last 24 hours)
+      // Recency boost (last 12 hours = strong signal, 12-24 hours = moderate)
       if (art.pubDate) {
         try {
           const pubTime = new Date(art.pubDate).getTime();
-          if (Date.now() - pubTime < 24 * 60 * 60 * 1000) {
-            score += 15;
-          }
+          const ageHours = (Date.now() - pubTime) / (60 * 60 * 1000);
+          if (ageHours < 12) score += 20;
+          else if (ageHours < 24) score += 10;
         } catch (_) { }
       }
 
@@ -600,41 +641,35 @@ export async function POST(request: Request) {
     scoredArticles.sort((a, b) => b.score - a.score);
     const sorted = scoredArticles.map((s) => s.art);
 
-    // Fall back to dynamic demo edition if not enough articles were aggregated
-    if (sorted.length < 12) {
-      console.warn(`Only found ${sorted.length} RSS articles. Falling back to demo edition.`);
-      const demoEdition: NewspaperEdition = {
-        ...baseEdition,
-        id: `demo-${now.getTime()}`,
-        editionName,
-        date: formattedDate,
-        number,
-        tickerData,
-      };
+    // ── LOG 3: Top scored articles going into section selection ──────────────
+    console.log(
+      "TOP SCORED ARTICLES:",
+      scoredArticles.slice(0, 8).map((s) => ({
+        title: s.art.title,
+        source: s.art.source,
+        score: s.score,
+      }))
+    );
 
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: gmailUser,
-          pass: gmailPass,
-        },
-      });
-
-      const emailSubject = `🗞️ ${demoEdition.editionName} - ${demoEdition.date} | Quick Finance (Demo Edition)`;
-      const emailHtml = buildEmailHtml(demoEdition);
-
-      await transporter.sendMail({
-        from: `"Quick Finance" <${gmailUser}>`,
-        to: recipientEmail,
-        subject: emailSubject,
-        html: emailHtml,
-      });
+    // ── FALLBACK: not enough articles — do NOT email demo content silently ───
+    if (sorted.length < 8) {
+      console.warn(
+        `[FALLBACK TRIGGERED] Only ${sorted.length} fresh articles survived filtering. ` +
+        `Minimum required: 8. No email sent. Returning error to client.`
+      );
 
       const res = NextResponse.json(
         {
           success: false,
-          error: "Failed to aggregate live RSS feeds. Showing demo edition.",
-          edition: demoEdition,
+          error: `Live article pool too small (${sorted.length} articles). No email sent. Check Vercel logs for RSS health.`,
+          debug: {
+            rawTotal: rawArticles.length,
+            uniqueFresh: uniqueArticles.length,
+            rejectedStale,
+            rejectedKeyword,
+            rejectedDuplicate,
+            sourceCounts,
+          },
         },
         { status: 200 }
       );
@@ -644,14 +679,29 @@ export async function POST(request: Request) {
       return res;
     }
 
-    // 4. Generate Structured Newspaper Edition
+    // 5. Generate Structured Newspaper Edition
     const usedUrls = new Set<string>();
+    const usedSources = new Map<string, number>(); // source → count used in this edition
 
-    // Featured Story (top article)
+    // Source cap: no single source dominates the edition
+    const SOURCE_CAP = 2;
+
+    const canUseSource = (source: string) => {
+      return (usedSources.get(source) || 0) < SOURCE_CAP;
+    };
+
+    const markSourceUsed = (source: string) => {
+      usedSources.set(source, (usedSources.get(source) || 0) + 1);
+    };
+
+    // Featured Story — pick from top 5 scored, rotate deterministically by hour
+    // Avoids same story appearing in consecutive morning/evening editions
     const rotationPoolSize = Math.min(sorted.length, 5);
-    const rotationIndex = Math.floor(Math.random() * rotationPoolSize);
+    const rotationIndex = hour % rotationPoolSize; // hour-based, not pure random
     const topStory = sorted[rotationIndex];
     usedUrls.add(topStory.link);
+    markSourceUsed(topStory.source);
+
     const featFields = generateArticleFields(topStory.title, topStory.description, "watchlist");
     const featuredStory: Article = {
       id: "live-feat",
@@ -662,25 +712,43 @@ export async function POST(request: Request) {
       ...featFields
     };
 
-    // Helper to find next matching unused article
-    const findUnusedArticle = (filterFn?: (art: typeof sorted[0]) => boolean) => {
+    // Helper: find next unused article matching an optional filter, with source cap
+    const findUnusedArticle = (
+      filterFn?: (art: typeof sorted[0]) => boolean,
+      respectSourceCap = true
+    ) => {
+      // Pass 1: filter + source cap
       for (const art of sorted) {
         if (usedUrls.has(art.link)) continue;
+        if (respectSourceCap && !canUseSource(art.source)) continue;
         if (!filterFn || filterFn(art)) {
           usedUrls.add(art.link);
+          markSourceUsed(art.source);
           return art;
         }
       }
-      // If no match found with filter, grab first unused article
+      // Pass 2: relax source cap if no match found with filter
+      if (filterFn) {
+        for (const art of sorted) {
+          if (usedUrls.has(art.link)) continue;
+          if (filterFn(art)) {
+            usedUrls.add(art.link);
+            markSourceUsed(art.source);
+            return art;
+          }
+        }
+      }
+      // Pass 3: any unused article (last resort, no filter, no cap)
       for (const art of sorted) {
         if (usedUrls.has(art.link)) continue;
         usedUrls.add(art.link);
+        markSourceUsed(art.source);
         return art;
       }
       return null;
     };
 
-    // AI & Fintech Radar (next 2 articles matching keywords)
+    // AI & Fintech Radar (2 articles)
     const aiFintechList: Article[] = [];
     for (let i = 0; i < 2; i++) {
       const art = findUnusedArticle((a) =>
@@ -699,7 +767,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Strategy & MBA Desk (next 2 articles matching keywords)
+    // Strategy & MBA Desk (2 articles)
     const consultingList: Article[] = [];
     for (let i = 0; i < 2; i++) {
       const art = findUnusedArticle((a) =>
@@ -718,7 +786,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Company Watchlist (next 2 articles matching keywords)
+    // Company Watchlist (2 articles)
     const watchlistList: Article[] = [];
     for (let i = 0; i < 2; i++) {
       const art = findUnusedArticle((a) =>
@@ -737,10 +805,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Smart Reads (next 2 academic/research papers)
+    // Smart Reads (2 articles — prefer HBR/consulting/long-form)
     const smartReads: SmartRead[] = [];
     for (let i = 0; i < 2; i++) {
-      const art = findUnusedArticle();
+      const art = findUnusedArticle((a) =>
+        /hbr|harvard|mckinsey|bcg|bain|research|report|insight|study/i.test(a.title + " " + a.description)
+      );
       if (art) {
         const fields = generateSmartReadFields(art.title, art.description);
         smartReads.push({
@@ -754,10 +824,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Market Commentary Headline
-    const macroArticle = sorted.find((art) => /fed|inflation|interest|rate|yield|dxy|macro|imf|world bank/i.test(art.title + " " + art.description)) || topStory;
+    // Market Commentary — prefer macro article, fall back to top story
+    const macroArticle =
+      sorted.find(
+        (art) =>
+          !usedUrls.has(art.link) &&
+          /fed|inflation|interest|rate|yield|dxy|macro|imf|world bank/i.test(art.title + " " + art.description)
+      ) || topStory;
 
-    // What to Watch Next Agenda (next 3 agenda items mapped dynamically from the RSS array)
+    // What to Watch Next (3 agenda items)
     const whatToWatchNext: WatchItem[] = [];
     for (let i = 0; i < 3; i++) {
       const art = findUnusedArticle();
@@ -766,14 +841,23 @@ export async function POST(request: Request) {
           (/fintech|pay|upi/i.test(art.title + " " + art.description) ? "fintech" : "watchlist");
         const event = art.title.length > 55 ? art.title.substring(0, 55) + "..." : art.title;
         const actionable = generateWhatToWatch(art.title, art.description, category);
-        whatToWatchNext.push({
-          event,
-          actionable
-        });
+        whatToWatchNext.push({ event, actionable });
       }
     }
 
-    // Construct live RSS-based Newspaper Edition
+    // ── LOG 4: Final edition summary ─────────────────────────────────────────
+    console.log("EDITION SUMMARY:", {
+      featuredStory: featuredStory.headline,
+      featuredSource: featuredStory.sourceName,
+      aiFintechCount: aiFintechList.length,
+      consultingCount: consultingList.length,
+      watchlistCount: watchlistList.length,
+      smartReadsCount: smartReads.length,
+      watchNextCount: whatToWatchNext.length,
+      sourcesUsed: Object.fromEntries(usedSources),
+    });
+
+    // 6. Construct live Edition object
     const liveEdition: NewspaperEdition = {
       id: `live-${now.getTime()}`,
       editionName,
@@ -796,7 +880,7 @@ export async function POST(request: Request) {
       whatToWatchNext
     };
 
-    // Send the compiled newsletter immediately
+    // 7. Send email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -815,6 +899,8 @@ export async function POST(request: Request) {
       html: emailHtml,
     });
 
+    console.log(`EMAIL SENT: edition ${liveEdition.id} → ${recipientEmail} | top story: "${featuredStory.headline}"`);
+
     const res = NextResponse.json({
       success: true,
       message: "Latest Quick Finance edition generated and emailed successfully.",
@@ -824,6 +910,7 @@ export async function POST(request: Request) {
     res.headers.set("Pragma", "no-cache");
     res.headers.set("Expires", "0");
     return res;
+
   } catch (error: any) {
     console.error("RSS manual refresh error:", error);
     const res = NextResponse.json(

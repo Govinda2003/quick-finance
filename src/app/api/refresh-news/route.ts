@@ -359,6 +359,15 @@ function generateSmartReadFields(title: string, description: string) {
     brainUpgrade,
   };
 }
+function isFreshArticle(pubDate: string, maxAgeHours = 36): boolean {
+  if (!pubDate) return false;
+
+  const pubTime = new Date(pubDate).getTime();
+  if (isNaN(pubTime)) return false;
+
+  const ageMs = Date.now() - pubTime;
+  return ageMs >= 0 && ageMs <= maxAgeHours * 60 * 60 * 1000;
+}
 
 export async function POST(request: Request) {
   try {
@@ -471,7 +480,25 @@ export async function POST(request: Request) {
         }
       })
     );
-
+    // ADD THE LOG HERE
+    console.log(
+      "RSS SAMPLE:",
+      rawArticles.slice(0, 10).map((a) => ({
+        title: a.title,
+        source: a.source,
+        pubDate: a.pubDate,
+        parsedDate: new Date(a.pubDate).toString(),
+      }))
+    );
+    console.log(
+      "RSS SAMPLE:",
+      rawArticles.slice(0, 10).map((a) => ({
+        title: a.title,
+        source: a.source,
+        pubDate: a.pubDate,
+        parsedDate: new Date(a.pubDate).toISOString?.()
+      }))
+    );
     // Filter, Deduplicate and Rank Articles
     const filterKeywords = [
       "finance", "fintech", "pay", "bank", "venture", "equity", "funding", "investment", "capital",
@@ -485,6 +512,8 @@ export async function POST(request: Request) {
     const seenUrls = new Set<string>();
 
     for (const art of rawArticles) {
+      if (!isFreshArticle(art.pubDate, 36)) continue;
+
       const titleLower = art.title.toLowerCase();
       const descLower = art.description.toLowerCase();
 
@@ -619,7 +648,9 @@ export async function POST(request: Request) {
     const usedUrls = new Set<string>();
 
     // Featured Story (top article)
-    const topStory = sorted[0];
+    const rotationPoolSize = Math.min(sorted.length, 5);
+    const rotationIndex = Math.floor(Math.random() * rotationPoolSize);
+    const topStory = sorted[rotationIndex];
     usedUrls.add(topStory.link);
     const featFields = generateArticleFields(topStory.title, topStory.description, "watchlist");
     const featuredStory: Article = {

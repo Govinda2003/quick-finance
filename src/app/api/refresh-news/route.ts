@@ -136,9 +136,7 @@ function generateTranslation(title: string, description: string, category: strin
   const titleLower = title.toLowerCase();
   const descLower = description.toLowerCase();
 
-  if (description.trim().length < 40 || description.trim() === title.trim()) {
-    return "Additional context was not available from the source feed.";
-  }
+  
 
   if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(titleLower + " " + descLower)) {
     return "Translation: this could move money. Changes in interest rates and bond yields affect borrowing costs, bank profitability, stock valuations, and overall market liquidity.";
@@ -170,9 +168,7 @@ function generateTranslation(title: string, description: string, category: strin
 function generateWhyThisMatters(title: string, description: string, category: string): string {
   const text = (title + " " + description).toLowerCase();
 
-  if (description.trim().length < 40 || description.trim() === title.trim()) {
-    return "Additional context was not available from the source feed.";
-  }
+  
 
   if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(text)) {
     return "This matters because interest-rate expectations shape equity valuations, bond pricing, loan demand, and the cost of capital for companies and investors.";
@@ -204,9 +200,7 @@ function generateWhyThisMatters(title: string, description: string, category: st
 function generateWhatToWatch(title: string, description: string, category: string): string {
   const text = (title + " " + description).toLowerCase();
 
-  if (description.trim().length < 40 || description.trim() === title.trim()) {
-    return "Additional context was not available from the source feed.";
-  }
+  
 
   if (/\b(fed|rates?|inflation|yields?|bonds?|banks?|banking|central bank)\b/i.test(text)) {
     return "Watch upcoming inflation data, bond yields, central bank commentary, and bank stock reactions.";
@@ -235,6 +229,24 @@ function generateWhatToWatch(title: string, description: string, category: strin
   return "Watch follow-up announcements, market reaction, competitor responses, and regulatory developments.";
 }
 
+
+function generateTakeawaysFromTitle(title: string): string[] {
+  const t = title.toLowerCase();
+  const clean = title.replace(/ - [^-]+$/, "").trim();
+
+  if (/ipo|listing|public offering|debut/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} is preparing to go public.`, "IPO activity signals investor appetite for new equity in this sector.", "Watch the pricing, valuation multiple, and first-day trading performance closely."];
+  if (/acqui|merger|takeover|buyout|deal/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} signals consolidation in this space.`, "M&A activity often reshapes competitive dynamics and pricing power.", "Watch integration timelines, synergy targets, and regulatory approval."];
+  if (/raises?|funding|series [a-e]|million|billion/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} secured fresh capital.`, "Funding rounds signal investor conviction in the business model and growth trajectory.", "Watch how the capital is deployed and whether follow-on rounds follow."];
+  if (/fed|rate|inflation|yield|central bank|monetary/i.test(t)) return ["Central bank policy signals are shifting market expectations.", "Rate decisions affect borrowing costs, equity valuations, and currency strength.", "Watch the next inflation print and forward guidance from policymakers."];
+  if (/ai|openai|nvidia|llm|gpu|model|chatgpt|gemini/i.test(t)) return ["AI infrastructure and model development continues to accelerate.", "Compute demand, model capabilities, and enterprise adoption are key value drivers.", "Watch GPU supply, cloud capex commitments, and enterprise contract wins."];
+  if (/layoff|cut|restructur|workforce|job/i.test(t)) return ["Workforce restructuring signals a shift in cost or strategic priorities.", "Layoffs often precede margin expansion but can signal demand weakness.", "Watch guidance revisions, headcount trends, and morale indicators."];
+  if (/private equity|pe fund|carried interest|lbo/i.test(t)) return ["Private equity activity reflects the state of leveraged finance markets.", "PE returns depend on entry multiples, debt costs, and exit conditions.", "Watch credit spreads, deal flow volume, and LP commitment trends."];
+  if (/crypto|bitcoin|blockchain|token|defi/i.test(t)) return ["Digital asset markets are reacting to macro and regulatory signals.", "Crypto valuations are sensitive to liquidity conditions and regulatory clarity.", "Watch on-chain activity, institutional flows, and regulatory developments."];
+  if (/bank|lending|credit|loan|deposit/i.test(t)) return ["Banking sector developments reflect the health of the credit cycle.", "Loan growth, deposit costs, and credit quality drive bank profitability.", "Watch net interest margins, non-performing loans, and capital ratios."];
+  if (/strategy|consulting|transformation|restructur/i.test(t)) return ["Strategic shifts at the corporate level signal new capital allocation priorities.", "Management consulting engagements often precede large operational changes.", "Watch execution timelines, cost targets, and shareholder response."];
+
+  return [`${clean.split(" ").slice(0,7).join(" ")} is a development worth tracking.`, "Monitor how this affects competitive positioning and capital flows in the sector.", "Watch for follow-up announcements, analyst reactions, and market movement."];
+}
 // Smart context-aware content generator for mock fields
 function generateArticleFields(title: string, description: string, category: string) {
   const cleanDesc = description.trim();
@@ -268,10 +280,7 @@ function generateArticleFields(title: string, description: string, category: str
   }
 
   // Fallbacks if we don't have exactly 3 unique takeaways
-  const fallbackMessage = "Additional context was not available from the source feed.";
-  while (takeaways.length < 3) {
-    takeaways.push(fallbackMessage);
-  }
+  const generatedTakeaways = generateTakeawaysFromTitle(normalizedTitle); while (takeaways.length < 3) { takeaways.push(generatedTakeaways[takeaways.length] || generatedTakeaways[0]); }
 
   const hook = "Not gonna lie, this matters.";
   const translation = generateTranslation(title, description, category);
@@ -290,7 +299,7 @@ function generateArticleFields(title: string, description: string, category: str
 function generateSmartReadFields(title: string, description: string) {
   const text = (title + " " + description).toLowerCase();
 
-  const fallbackMessage = "Additional context was not available from the source feed.";
+  const fallbackMessage = "";
 
   const takeaways: string[] = [];
   const cleanDesc = description.trim();
@@ -316,7 +325,7 @@ function generateSmartReadFields(title: string, description: string) {
   }
 
   while (takeaways.length < 3) {
-    takeaways.push(fallbackMessage);
+    const gt = generateTakeawaysFromTitle(normalizedTitle); takeaways.push(gt[takeaways.length] || gt[0]);
   }
 
   let hook = "Not gonna lie, this matters.";
@@ -947,3 +956,8 @@ export async function POST(request: Request) {
     return res;
   }
 }
+
+
+
+
+

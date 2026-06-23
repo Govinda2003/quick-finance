@@ -61,3 +61,4 @@ export async function GET() {
   const tickerData = results.filter(Boolean);
   return NextResponse.json({ success: true, tickerData });
 }
+

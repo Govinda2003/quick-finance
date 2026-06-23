@@ -912,30 +912,11 @@ export async function POST(request: Request) {
       whatToWatchNext
     };
 
-    // 7. Send email
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
-
-    const emailSubject = `🗞️ ${liveEdition.editionName} - ${liveEdition.date} | Quick Finance`;
-    const emailHtml = buildEmailHtml(liveEdition);
-
-    await transporter.sendMail({
-      from: `"Quick Finance" <${gmailUser}>`,
-      to: recipientEmail,
-      subject: emailSubject,
-      html: emailHtml,
-    });
-
-    console.log(`EMAIL SENT: edition ${liveEdition.id} → ${recipientEmail} | top story: "${featuredStory.headline}"`);
+    // Email sending removed from refresh � use Send Mail button or cron
 
     const res = NextResponse.json({
       success: true,
-      message: "Latest Quick Finance edition generated and emailed successfully.",
+      message: "Latest Quick Finance edition generated successfully.",
       edition: liveEdition,
     });
     res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -957,6 +938,9 @@ export async function POST(request: Request) {
     return res;
   }
 }
+
+
+
 
 
 

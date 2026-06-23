@@ -768,11 +768,20 @@ export async function POST(request: Request) {
     }
 
     // Strategy & MBA Desk (2 articles)
+    // Priority 1: articles FROM consulting sources directly
+    // Priority 2: articles that mention consulting/strategy topics
     const consultingList: Article[] = [];
     for (let i = 0; i < 2; i++) {
-      const art = findUnusedArticle((a) =>
-        /consulting|mckinsey|bcg|bain|mba|strategy|merger|acquisition|corp/i.test(a.title + " " + a.description)
+      // First try: articles from consulting/HBR sources
+      let art = findUnusedArticle((a) =>
+        /mckinsey|bain insights|bcg insights|harvard business review/i.test(a.source)
       );
+      // Second try: articles mentioning consulting/strategy topics from any source
+      if (!art) {
+        art = findUnusedArticle((a) =>
+          /\b(consulting|advisory|mckinsey|bcg|bain|hbr|harvard business|mba|strategy|transformation|restructur|divestiture|spin.?off|merger|acquisition|private equity|buyout|lbo)\b/i.test(a.title + " " + a.description)
+        );
+      }
       if (art) {
         const fields = generateArticleFields(art.title, art.description, "consulting");
         consultingList.push({
@@ -787,11 +796,16 @@ export async function POST(request: Request) {
     }
 
     // Company Watchlist (2 articles)
+    // Focus on specific company news — earnings, deals, leadership, products
     const watchlistList: Article[] = [];
     for (let i = 0; i < 2; i++) {
-      const art = findUnusedArticle((a) =>
-        /nvidia|tesla|microsoft|blackstone|jpmorgan|morgan|chase|bank|mckinsey|bcg|bain/i.test(a.title + " " + a.description)
-      );
+      const art = findUnusedArticle((a) => {
+        const text = a.title + " " + a.description;
+        // Must mention a specific company AND a company event
+        const hasCompany = /nvidia|apple|google|alphabet|meta|amazon|microsoft|tesla|openai|anthropic|blackstone|blackrock|jpmorgan|goldman|morgan stanley|softbank|sequoia|andreessen|berkshire|reliance|tata|infosys|wipro|hdfc|icici|sbi/i.test(text);
+        const hasEvent = /earnings|revenue|profit|loss|ceo|founder|laid off|layoff|acqui|merger|deal|raises|funding|ipo|shares|stock|valuation|invest|partner|launch|product|quarter/i.test(text);
+        return hasCompany && hasEvent;
+      });
       if (art) {
         const fields = generateArticleFields(art.title, art.description, "watchlist");
         watchlistList.push({
@@ -805,12 +819,20 @@ export async function POST(request: Request) {
       }
     }
 
-    // Smart Reads (2 articles — prefer HBR/consulting/long-form)
+    // Smart Reads (2 articles — prefer long-form insight/research pieces)
+    // Priority: HBR/McKinsey/BCG/Bain source, then research/insight keywords
     const smartReads: SmartRead[] = [];
     for (let i = 0; i < 2; i++) {
-      const art = findUnusedArticle((a) =>
-        /hbr|harvard|mckinsey|bcg|bain|research|report|insight|study/i.test(a.title + " " + a.description)
+      // First try: from insight/research sources
+      let art = findUnusedArticle((a) =>
+        /harvard business review|mckinsey insights|bcg insights|bain insights/i.test(a.source)
       );
+      // Second try: articles with research/insight/analysis language
+      if (!art) {
+        art = findUnusedArticle((a) =>
+          /\b(research|insight|report|study|analysis|survey|framework|whitepaper|playbook|guide|how to|what leaders|why companies|the future of)\b/i.test(a.title)
+        );
+      }
       if (art) {
         const fields = generateSmartReadFields(art.title, art.description);
         smartReads.push({

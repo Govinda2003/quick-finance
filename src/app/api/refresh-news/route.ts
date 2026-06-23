@@ -232,7 +232,7 @@ function generateWhatToWatch(title: string, description: string, category: strin
 
 function generateTakeawaysFromTitle(title: string): string[] {
   const t = title.toLowerCase();
-  const clean = title.replace(/ - [^-]+$/, "").trim();
+  const clean = title.replace(/ - [^-]+$/, "").replace(/\s+(is said to|are said to|said to|reports?|says?|according to).*/i, "").trim();
 
   if (/ipo|listing|public offering|debut/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} is preparing to go public.`, "IPO activity signals investor appetite for new equity in this sector.", "Watch the pricing, valuation multiple, and first-day trading performance closely."];
   if (/acqui|merger|takeover|buyout|deal/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} signals consolidation in this space.`, "M&A activity often reshapes competitive dynamics and pricing power.", "Watch integration timelines, synergy targets, and regulatory approval."];
@@ -956,6 +956,7 @@ export async function POST(request: Request) {
     return res;
   }
 }
+
 
 
 

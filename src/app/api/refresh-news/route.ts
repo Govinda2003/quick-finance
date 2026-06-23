@@ -774,7 +774,7 @@ export async function POST(request: Request) {
     for (let i = 0; i < 2; i++) {
       // First try: articles from consulting/HBR sources
       let art = findUnusedArticle((a) =>
-        /mckinsey|bain insights|bcg insights|harvard business review/i.test(a.source)
+        /fortune|harvard law|pe strategy|mba strategy/i.test(a.source)
       );
       // Second try: articles mentioning consulting/strategy topics from any source
       if (!art) {
@@ -825,7 +825,7 @@ export async function POST(request: Request) {
     for (let i = 0; i < 2; i++) {
       // First try: from insight/research sources
       let art = findUnusedArticle((a) =>
-        /harvard business review|mckinsey insights|bcg insights|bain insights/i.test(a.source)
+        /fortune|harvard law|pe strategy|mba strategy/i.test(a.source)
       );
       // Second try: articles with research/insight/analysis language
       if (!art) {

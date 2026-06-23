@@ -232,10 +232,10 @@ function generateWhatToWatch(title: string, description: string, category: strin
 
 function generateTakeawaysFromTitle(title: string): string[] {
   const t = title.toLowerCase();
-  const clean = title.replace(/ - [^-]+$/, "").replace(/\s+(is said to|are said to|said to|reports?|says?|according to|ahead of|after|amid|as|following).*/i, "").trim();
+  const clean = title.replace(/ - [^-]+$/, "").replace(/\s+(is said to|are said to|said to|soars?|jumps?|drops?|falls?|rises?|reports?|says?|according to|ahead of|after|amid|as|following).*/i, "").trim();
 
   if (/\b(fed|rate|inflation|yield|central bank|monetary)\b/i.test(t)) return ["Central bank policy is shifting on rates and liquidity.", "Rate decisions affect borrowing costs, equity valuations, and currency strength.", "Watch the next inflation print and forward guidance from policymakers."];
-  if (/ipo|listing|public offering|debut/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} is preparing to go public.`, "IPO activity signals investor appetite for new equity in this sector.", "Watch the pricing, valuation multiple, and first-day trading performance closely."];
+  if (/\b(ipo|listing|public offering|debut)\b/i.test(t) && !/ahead of ipo|before ipo|prior to ipo/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} is preparing to go public.`, "IPO activity signals investor appetite for new equity in this sector.", "Watch the pricing, valuation multiple, and first-day trading performance closely."];
   if (/acqui|merger|takeover|buyout|deal/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} signals consolidation in this space.`, "M&A activity often reshapes competitive dynamics and pricing power.", "Watch integration timelines, synergy targets, and regulatory approval."];
   if (/raises?|funding|series [a-e]|million|billion/i.test(t)) return [`${clean.split(" ").slice(0,6).join(" ")} secured fresh capital.`, "Funding rounds signal investor conviction in the business model and growth trajectory.", "Watch how the capital is deployed and whether follow-on rounds follow."];
   if (/fed|rate|inflation|yield|central bank|monetary/i.test(t)) return ["Central bank policy signals are shifting market expectations.", "Rate decisions affect borrowing costs, equity valuations, and currency strength.", "Watch the next inflation print and forward guidance from policymakers."];
@@ -957,6 +957,8 @@ export async function POST(request: Request) {
     return res;
   }
 }
+
+
 
 
 
